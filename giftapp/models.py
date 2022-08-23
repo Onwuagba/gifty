@@ -1,7 +1,8 @@
-from ast import keyword
-from tkinter import CASCADE
+import jwt
+from django.conf import settings
+from datetime import datetime, timedelta
 from django.db import models
-from django.contrib.auth.models import BaseUserManager, AbstractUser
+from django.contrib.auth.models import BaseUserManager, AbstractUser, PermissionsMixin
 from django.core.validators import RegexValidator
 import uuid
 
@@ -23,11 +24,14 @@ class MyManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, email, password, **extra_fields):
 
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
+
+        if password is None:
+            raise TypeError('Superusers must have a password.')
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
@@ -36,10 +40,10 @@ class MyManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class User(AbstractUser):
+class User(AbstractUser, PermissionsMixin):
     username = None
     email = models.EmailField(
-        max_length=255, unique=True, verbose_name='email address')
+        db_index=True, max_length=255, unique=True, verbose_name='email address')
     first_name = models.CharField(
         max_length=150, null=False, blank=False, verbose_name='first name')
     last_name = models.CharField(
@@ -61,6 +65,28 @@ class User(AbstractUser):
     def __str__(self):
         return self.first_name
 
+    def get_full_name(self) -> str:
+        return super().get_full_name()
+
+    @property
+    def token(self):
+        return self._generate_jwt_token()
+
+    def _generate_jwt_token(self):
+        """
+        Generates a JSON Web Token that stores user's ID and has an expiry
+        date set to 60 days.
+        """
+        time = datetime.now() + timedelta(minutes=1000)
+        payload = {
+            'id': self.pk,
+            'expiryTime': int(time.strftime('%s'))
+        }
+
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+
+        return token.decode('utf-8')
+        
 class Category(models.Model):
     cat_name = models.CharField(max_length=150, unique=True, null=False, blank=False)
     desription = models.TextField(null=False, blank=False)
@@ -70,7 +96,6 @@ class Category(models.Model):
     
     def __str__(self):
         return self.cat_name
-
 
 class Store(models.Model):
     store_name = models.CharField(max_length=150, unique=True, null=False, blank=False)
@@ -125,5 +150,6 @@ class Saves(models.Model):
 
 class NewSearch(models.Model):
     keyword = models.CharField(max_length=20, null=True)
+    ip_address = models.CharField(max_length=20, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
