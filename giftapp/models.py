@@ -1,6 +1,6 @@
-import jwt
-from django.conf import settings
-from datetime import datetime, timedelta
+# import jwt
+# from django.conf import settings
+# from datetime import datetime, timedelta
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractUser, PermissionsMixin
 from django.core.validators import RegexValidator
@@ -54,7 +54,7 @@ class User(AbstractUser, PermissionsMixin):
     is_admin = models.BooleanField(default=False)
     regToken = models.UUIDField(default=uuid.uuid4, editable=False,
                                 unique=True, verbose_name='token')
-    date_updated = models.DateTimeField(auto_now=True)
+    date_created = models.DateTimeField(auto_now=True)
     date_updated = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
@@ -68,24 +68,24 @@ class User(AbstractUser, PermissionsMixin):
     def get_full_name(self) -> str:
         return super().get_full_name()
 
-    @property
-    def token(self):
-        return self._generate_jwt_token()
+    # @property
+    # def token(self):
+    #     return self._generate_jwt_token()
 
-    def _generate_jwt_token(self):
-        """
-        Generates a JSON Web Token that stores user's ID and has an expiry
-        date set to 60 days.
-        """
-        time = datetime.now() + timedelta(minutes=1000)
-        payload = {
-            'id': self.pk,
-            'expiryTime': int(time.strftime('%s'))
-        }
+    # def _generate_jwt_token(self):
+    #     """
+    #     Generates a JSON Web Token that stores user's ID and has an expiry
+    #     date set to 60 days.
+    #     """
+    #     time = datetime.now() + timedelta(minutes=1000)
+    #     payload = {
+    #         'id': self.pk,
+    #         'expiryTime': int(time.strftime('%s'))
+    #     }
 
-        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    #     token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
-        return token.decode('utf-8')
+    #     return token.decode('utf-8')
         
 class Category(models.Model):
     cat_name = models.CharField(max_length=150, unique=True, null=False, blank=False)
