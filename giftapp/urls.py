@@ -1,10 +1,9 @@
 from django.urls import path
-# from .views import AccountEnquiry, CreditPosting, TransactionStatusQuery
+from .views import Home, RegisterAPIView
 
 app_name = 'giftapp'
 
 urlpatterns = [
-    # path("vfd/payment/validate", AccountEnquiry.as_view()),
-    # path("vfd/payment", CreditPosting.as_view()),
-    # path("vfd/payment/requery", TransactionStatusQuery.as_view()),
+    path("register", RegisterAPIView.as_view()),
+    path("", Home.as_view()),
 ]

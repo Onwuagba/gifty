@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from giftapp.models import User
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt import serializers as jwt_serializers
 
 class RegistrationSerializers(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -21,6 +22,8 @@ class RegistrationSerializers(serializers.ModelSerializer):
         }
     
     def validate(self, data):
+        import pdb
+        pdb.set_trace()
         if not data.get('password') or not data.get('confirm_password'):
             raise serializers.ValidationError("Please enter a password and confirm it.")
         if data.get('password') != data.get('confirm_password'):
@@ -43,3 +46,12 @@ class RegistrationSerializers(serializers.ModelSerializer):
         user.save()
 
         return user
+
+class CustomTokenSerializer(jwt_serializers.TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['first_name'] = user.first_name
+        token['last_name'] = user.last_name
+        token['is_superuser'] = user.is_superuser
+        return token

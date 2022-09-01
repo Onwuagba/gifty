@@ -125,6 +125,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = { 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema' }
 
+# JWT
+SIMPLE_JWT = {
+    'USER_ID_FIELD':'uid'
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 

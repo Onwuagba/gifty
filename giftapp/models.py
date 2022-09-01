@@ -9,7 +9,7 @@ import uuid
 # Create your models here.
 
 
-class MyManager(BaseUserManager):
+class UserManager(BaseUserManager):
 
     def create_user(self, email, password=None, **extra_fields):
 
@@ -52,15 +52,15 @@ class User(AbstractUser, PermissionsMixin):
         max_length=128, null=False, blank=False, verbose_name='password')
     is_active = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    regToken = models.UUIDField(default=uuid.uuid4, editable=False,
-                                unique=True, verbose_name='token')
+    uid = models.UUIDField(default=uuid.uuid4, editable=False,
+                                unique=True, primary_key=True)
     date_created = models.DateTimeField(auto_now=True)
     date_updated = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
-    objects = MyManager()
+    objects = UserManager()
 
     def __str__(self):
         return self.first_name
