@@ -28,6 +28,6 @@ urlpatterns = [
     path('api/v1/', include('giftapp.urls')),
     
     #authentication
-    path('api/v1/get_token/', CustomToken.as_view(), name='token_obtain_pair'),
-    path('api/v1/refresh_token/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/v1/get_token/', CustomToken.as_view(), name='token_obtain_pair'), # login and get token
+    path('api/v1/refresh_token/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'), # refresh token
 ]

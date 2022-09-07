@@ -40,8 +40,10 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class User(AbstractUser, PermissionsMixin):
+class User(AbstractUser):
     username = None
+    uid = models.UUIDField(default=uuid.uuid4, editable=False,
+                                unique=True, primary_key=True)
     email = models.EmailField(
         db_index=True, max_length=255, unique=True, verbose_name='email address')
     first_name = models.CharField(
@@ -52,8 +54,7 @@ class User(AbstractUser, PermissionsMixin):
         max_length=128, null=False, blank=False, verbose_name='password')
     is_active = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    uid = models.UUIDField(default=uuid.uuid4, editable=False,
-                                unique=True, primary_key=True)
+    regToken = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     date_created = models.DateTimeField(auto_now=True)
     date_updated = models.DateTimeField(auto_now_add=True)
 
@@ -97,8 +98,11 @@ class Category(models.Model):
     def __str__(self):
         return self.cat_name
 
+    class Meta:
+        ordering = ['date_updated']
+
 class Store(models.Model):
-    store_name = models.CharField(max_length=150, unique=True, null=False, blank=False)
+    store_name = models.CharField(max_length=150, unique=True, null=False, blank=False,db_index=True)
     store_logo = models.ImageField(upload_to='StoreLogo/', unique=True)
     added_by = models.ForeignKey(User, related_name='staff_store_add', on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -120,7 +124,7 @@ class SubCategory(models.Model):
 
 
 class Product(models.Model):
-    prod_name = models.CharField(max_length=150, unique=True, null=False, blank=False)
+    prod_name = models.CharField(max_length=150, unique=True, null=False, blank=False, db_index=True)
     images = models.ImageField(upload_to='Product/', unique=True)
     desription = models.TextField(null=False, blank=False)
     count = models.IntegerField(null=False, blank=False, default=0)
