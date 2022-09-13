@@ -1,0 +1,1 @@
+email_sender='admin@gifty.com'

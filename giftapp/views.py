@@ -1,12 +1,16 @@
 # from django.shortcuts import render
+from base64 import urlsafe_b64decode
 from rest_framework import status, generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from giftapp.serializers import ChangePasswordSerializer, CustomTokenSerializer, RegistrationSerializer, ResetPasswordSerializer
+from giftapp.models import User
+from giftapp.serializers import ChangePasswordSerializer, CustomTokenSerializer, PasswordResetSerializer, RegistrationSerializer, ResetPasswordSerializer
 from rest_framework_simplejwt import views as jwt_views
 import json
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
+from django.contrib.auth.tokens import default_token_generator 
 
 # Create your views here.   
 
@@ -68,14 +72,14 @@ class ChangePasswordView(generics.UpdateAPIView):
         return obj
 
     def patch(self, request, **kwargs):
-        self.object = self.get_object()
+        user = self.get_object()
         change_data = request.data
-        change_data['user'] = request.user
-        change_serializer = self.serializer_class(change_data['user'], data=change_data)
+        # change_data['user'] = request.user
+        change_serializer = self.serializer_class(user, data=change_data)
         try:
             change_serializer.is_valid(raise_exception=True)
             change_serializer.save()
-            res = 'Password reset is complete.'
+            res = 'Password reset is complete. Please check your email to complete process'
             re_status = 'success'
             res_status = status.HTTP_200_OK
         except Exception:
@@ -89,35 +93,32 @@ class ChangePasswordView(generics.UpdateAPIView):
             }, status=res_status)
 
 # Reset/Forgot password 
-class ResetPasswordView(generics.UpdateAPIView):
+class ResetPasswordView(APIView):
     """
     Allow user to reset password.
-
     User clicks forgot password and enters email for validation. Email is sent with token
-    
-    Accepts - password, confirm_password, old_password
+    Accepts - email
     """
     permission_classes = (AllowAny,)
     serializer_class = ResetPasswordSerializer
 
-    def get_object(self, queryset=None):
-        obj = self.request.user
-        return obj
-
-    def patch(self, request, **kwargs):
-        self.object = self.get_object()
-        change_data = request.data
-        change_data['user'] = request.user
-        change_serializer = self.serializer_class(change_data['user'], data=change_data)
+    def post(self, request, **kwargs):
+        reset_data = request.data
         try:
-            change_serializer.is_valid(raise_exception=True)
-            change_serializer.save()
-            res = 'Password reset is complete.'
-            re_status = 'success'
-            res_status = status.HTTP_200_OK
-        except Exception:
-            res = change_serializer.errors
-            re_status = 'failure'
+            change_serializer = self.serializer_class(data=reset_data)
+            if change_serializer.is_valid(raise_exception=True):
+                change_serializer.create_token_send_email(request)
+                res = f"A password reset link has been sent to {reset_data['email']}. Check your inbox to complete the process."
+                re_status = 'success'
+                res_status = status.HTTP_200_OK
+            else:
+                for error in change_serializer.errors:
+                    res = error
+                re_status = 'failed'
+                res_status = status.HTTP_400_BAD_REQUEST
+        except Exception as e:
+            res = e.args[0]
+            re_status = 'failed'
             res_status = status.HTTP_400_BAD_REQUEST
 
         return JsonResponse({
@@ -125,57 +126,76 @@ class ResetPasswordView(generics.UpdateAPIView):
             'status':re_status,
             }, status=res_status)
 
-# # Reset and forgot password 
-# class ResetPasswordView(APIView):
-#     # no permission class so we can do reset and change password in the same class
-#     serializer_class = RegistrationSerializers
 
-#     def post(self, request, **kwargs):
-#         data = request.data
+class PasswordResetView(generics.UpdateAPIView):
+    """
+    Users come here after submitting mail from forgot password API.
+    User clicks link from email and submits new password
+    * Accepts - email
+    """
+    permission_classes = (AllowAny,)
+    serializer_class = PasswordResetSerializer
 
-#         if request.user.is_authenticated and kwargs.get('change_type')=='change_password':
-#             if request.user.is_admin: # allow admin change user password
-#                 user = data.get('user_id')
-#             else: 
-#                 user = request.user
-            
-#             data['user'] = user
-#             reset = self.change_password(data)
+    def get_object(self, uid, token):
+        error = {}
+        if not all([uid, token]):
+            error['new_password'] = "Reset password link has expired. Please begin the forgot password process again"
+        else:
+            uid = urlsafe_b64decode(uid).decode('utf-8')
+            try:
+                user = User.objects.get(uid=uid)
+                if not default_token_generator.check_token(user, token):
+                    error['new_password'] = "Reset password link has expired. Please begin the forgot password process again"
+            except Exception:
+                error['new_password'] = "No user found with user ID"
 
-#             return Response({
-#                 'message':'Registration successful. Please confirm your email to complete set up',
-#                 # 'firstname': serializer.data.get('first_name'),
-#                 # 'email': serializer.data.get('email'),
-#             }, status=status.HTTP_201_CREATED)
+        if error:
+            raise ValidationError(error)
+        return user 
 
-#         elif request.user.is_authenticated==False and kwargs.get('change_type')=='forgot_password':
-            
-#             return Response({
-#                 'message':'',
-#                 'errors':[
-#                     'Please'
-#                 ]
-#             }, status=status.HTTP_201_CREATED)
-        
-#         else:
-#             pass
-    
-#     def change_password(self, data):
-#         change_serializer = self.serializer_class(data=data)
-#         change_serializer.is_valid(raise_exception=True)
-#         change_serializer.save()
+    def patch(self, request, **kwargs):
+        uid =  kwargs.get('g_uid', "")
+        token = kwargs.get('token', "")
+        context = {
+            "uid":uid,
+            "token":token
+        }
+        try:
+            user = self.get_object(uid, token)
+            data = request.data
+            pass_reset_serializer = self.serializer_class(user, data=data, context=context)
+            if pass_reset_serializer.is_valid(raise_exception=True):
+                pass_reset_serializer.save()
+                res = "Password reset is complete. Please proceed to login"
+                re_status = 'success'
+                res_status = status.HTTP_200_OK
+            else:
+                for error in pass_reset_serializer.errors:
+                    res = error
+                re_status = 'faiwled'
+                res_status = status.HTTP_400_BAD_REQUEST
+        except Exception as e:
+            res = e.args[0]
+            re_status = 'failed'
+            res_status = status.HTTP_400_BAD_REQUEST
 
-#         return change_serializer
-
-#     def forgot_password(self, data):
-#         forgot_password = self.serializer_class(data=data)
-#         forgot_password.is_valid(raise_exception=True)
-#         forgot_password.save()
-
-#         return forgot_password
+        return JsonResponse({
+            'message':res,
+            'status':re_status,
+            }, status=res_status)
 
 # customise JWT login payload to pass firstname and other information
 class CustomToken(jwt_views.TokenObtainPairView):
 
     serializer_class = CustomTokenSerializer
     token_obtain_pair = jwt_views.TokenObtainPairView.as_view()
+
+
+# class Logout(APIView):
+#     permission_classes = (AllowAny,)
+#     def get(self,request):
+#         import pdb
+#         pdb.set_trace()
+#         request.user.auth_token.delete()
+#         auth.logout(request)
+#         return Response('successfully deleted')

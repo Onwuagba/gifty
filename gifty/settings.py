@@ -30,6 +30,8 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+ADMINS = [('Admin', os.getenv('ADMIN_EMAIL'))]
+
 ALLOWED_HOSTS = ['*']
 
 
@@ -62,7 +64,7 @@ ROOT_URLCONF = 'gifty.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -89,8 +91,19 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
 
     ),
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema'
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    # 'EXCEPTION_HANDLER': 'giftapp.exceptions.Noe'
 }
+
+# Email Configuration
+
+EMAIL_BACKEND=os.getenv('EMAIL_BACKEND')
+EMAIL_HOST=os.getenv('EMAIL_HOST')
+EMAIL_PORT=os.getenv('EMAIL_PORT')
+EMAIL_HOST_USER=os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD=os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS=os.getenv('EMAIL_USE_TLS')
+# EMAIL_USE_SSL=os.getenv('EMAIL_USE_SSL')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -104,7 +117,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'PASSWORD': os.getenv('DB_PASS'),
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT', '5432'),
     },
@@ -139,6 +152,9 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
 }
+
+# time (in seconds) before password_reset token expires
+PASSWORD_RESET_TIMEOUT = 900 
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
